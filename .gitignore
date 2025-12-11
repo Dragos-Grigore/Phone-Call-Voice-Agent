@@ -1,0 +1,4 @@
+# Credentiale si mediu
+.env
+serviceAccountKey.json
+agent_env/
