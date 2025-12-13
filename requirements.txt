@@ -1,0 +1,16 @@
+torch
+transformers
+accelerate
+sentencepiece
+numpy
+sounddevice
+webrtcvad
+openai-whisper
+pyttsx3
+TTS
+python-dotenv
+firebase-admin
+pandas
+langchain-core
+langchain-community
+langchain-classic
