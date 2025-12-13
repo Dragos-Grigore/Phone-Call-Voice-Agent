@@ -1,4 +1,6 @@
-# Credentiale si mediu
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
 .env
-serviceAccountKey.json
-agent_env/
