@@ -14,3 +14,8 @@ pandas
 langchain-core
 langchain-community
 langchain-classic
+twilio
+flask
+flask-sock
+pyngrok
+audioop
