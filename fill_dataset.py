@@ -1,51 +1,43 @@
 from firebase_init import db
 from firebase_admin import firestore
-import time 
 import pandas as pd
+import re
+import unicodedata
+
+def hotel_email(hotel_name, domain="example.com"):
+    # Normalize unicode (é → e)
+    name = unicodedata.normalize("NFKD", hotel_name)
+    name = name.encode("ascii", "ignore").decode("ascii")
+
+    # Lowercase
+    name = name.lower()
+
+    # Replace any non-alphanumeric with a dot
+    name = re.sub(r"[^a-z0-9]+", ".", name)
+
+    # Trim leading/trailing dots
+    name = name.strip(".")
+
+    return f"{name}@{domain}"
 
 def fill_dataset():
     df= pd.read_excel("All Sabre GDS Properties with Global Ids (Active)_Aug2025_2.xlsx", sheet_name="Page1_1")
     for index,row in df.iterrows():
         
         # Accesarea datelor:
-        hotel_id = row['Sabre Property ID']
+        user_id = row['Sabre Property ID']
         hotel_name = row['Sabre Property name']
-        adress1 = row['Address line 1']
-        adress2 = row['Address line 2']
-        city = row['City']
-        state = row['State']
-        zip = row['Zip']
-        country = row['Country Code']
+        adress = row['Address line 1']
         phone = row['Property Phone Number']
-        fax = row['Property Fax Number']
-        airport = row['Primary Airport Code']
-        rating = row['Sabre Property Rating']
-        latitude = row['Property Latitude']
-        longitude = row['Property Longitude']
-        chain = row['Chain code']
-        source = row['Source Code']
-        global_id = row['Global Property ID']
-        nume_hotel_nou = f"Hotel_Creat_{hotel_id}"
+        nume_hotel_nou = f"Hotel_{user_id}"
         create_new_hotel_instance(
             hotel_name=nume_hotel_nou,
-            details={
-                'hotel_id':hotel_id,
+            details = {
+                'user_id': user_id,
                 'hotel_name': hotel_name,
-                'adress1': adress1,
-                'adress2': adress2,
-                'city': city,
-                'state': state,
-                'zip': zip,
-                'country': country,
+                'adress': adress,
                 'phone': phone,
-                'fax':fax,
-                'airport':airport,
-                'rating':rating,
-                'latitude':latitude,
-                'longitude':longitude,
-                'chain':chain,
-                'source':source,
-                'global_id':global_id 
+                'email_address': hotel_email(hotel_name, domain="example.com"),
             }
         )
 
