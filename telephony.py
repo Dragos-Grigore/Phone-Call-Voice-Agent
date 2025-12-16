@@ -7,39 +7,34 @@ from flask import Flask, request
 from flask_sock import Sock
 from twilio.twiml.voice_response import VoiceResponse, Connect
 from twilio.rest import Client
+from interactor import VoiceAgent
 
 load_dotenv()
 
 app = Flask(__name__)
 sock = Sock(app)
 
-ngrok_url = "..." # asta o luati din terminal dupa comanda: ngrok http 5000 -> ex: https://catarina-tensed-berry.ngrok-free.dev
+
+lighting_url = "https://5000-01kck4zt7we0gagz901x4r8gzs.cloudspaces.litng.ai" 
 
 account_sid = os.environ["TWILIO_ACCOUNT_SID"]
 auth_token = os.environ["TWILIO_AUTH_TOKEN"]
 client = Client(account_sid, auth_token)
 
-active_agent = None # aici ar trebui sa vina instanta de agent care face stt-llm-tts si foloseste tool urile
+called_hotel = "Hotel_1"
+active_agent = VoiceAgent(called_hotel) 
+
 
 @app.route('/dial')
-def dial_hotel():
+def dial_hotel() -> str:
     call = client.calls.create(
-        url=f"{ngrok_url}/voice",
-        to="...", # adaugati nr vostru aici
-        from_="+15703545228",) # aici e numarul primit de la twilio
-    return call.sid
+        url=f"{lighting_url}/voice",
+        to="+40764067966",
+        from_="+15703545228", # Twilio number
+    )
+    
+    return str(call.sid)
 
-"""
-    Pt TWILIO: 
-    -> aici adaugati numarul vostru : https://console.twilio.com/us1/develop/phone-numbers/manage/verified
-    -> aici setati acces pt Romania : https://console.twilio.com/us1/develop/voice/settings/geo-permissions?frameUrl=%2Fconsole%2Fvoice%2Fcalls%2Fgeo-permissions%3Fx-target-region%3Dus1&currentFrameUrl=%2Fconsole%2Fvoice%2Fcalls%2Fgeo-permissions%2Flow-risk%3F__override_layout__%3Dembed%26countryIsoCode%3Droman%26x-target-region%3Dus1%26bifrost%3Dtrue
-
-    -> de aici va cumparati nr de twilio (e gratis, dar cu limita ) : https://console.twilio.com/us1/develop/phone-numbers/manage/incoming
-
-    Pt NGROK:
-    -> va faceti cont gratis
-    -> la Setup&Installation o sa va apara cv de genutl ngrok config add-authtoken ... pe care o rulati in terminal si apoi ngrok http 5000 pt url
-"""
 
 @app.route("/voice", methods=['POST'])
 def voice():
@@ -58,40 +53,36 @@ def stream(ws):
         try:
             message = ws.receive()
             if message is None: break
-            
             data = json.loads(message)
 
-            if data['event'] == 'start':
-                stream_sid = data['start']['streamSid']
-                print(f"Stream started: {stream_sid}")
-
-            elif data['event'] == 'media':
-                # decode audio and pass it to agent
-                if active_agent:
-                    payload = data['media']['payload']
-                    chunk_mulaw = base64.b64decode(payload)
-                    chunk_pcm = audioop.ulaw2lin(chunk_mulaw, 2)
-                    response_pcm = active_agent.handle_audio_stream(chunk_pcm)
+            if data['event'] == 'media':
+                payload = data['media']['payload']
+                chunk_mulaw = base64.b64decode(payload)
+                
+                # Twilio sends mulaw 8000Hz. Convert to PCM 8000Hz
+                chunk_pcm = audioop.ulaw2lin(chunk_mulaw, 2)
+                
+                # Feed to Interactor
+                response_pcm = active_agent.handle_audio_stream(chunk_pcm)
+                
+                if response_pcm:
+                    # Agent replied! Convert PCM 8000Hz back to mulaw
+                    mulaw = audioop.lin2ulaw(response_pcm, 2)
+                    b64_audio = base64.b64encode(mulaw).decode("utf-8")
                     
-                    # if agent responded, send it back to twilio in the needed format
-                    if response_pcm:
-                        mulaw = audioop.lin2ulaw(response_pcm, 2)
-                        b64_audio = base64.b64encode(mulaw).decode("utf-8")
-                        
-                        msg = {
-                            "event": "media",
-                            "streamSid": stream_sid,
-                            "media": {
-                                "payload": b64_audio
-                            }
-                        }
-                        ws.send(json.dumps(msg))
-
+                    ws.send(json.dumps({
+                        "event": "media",
+                        "streamSid": data['streamSid'],
+                        "media": {"payload": b64_audio}
+                    }))
+        
 
         except Exception as e:
-            print(f"Telephony Error: {e}")
+            print(f"Stream Error: {e}")
             break
+    
+
+
 
 if __name__ == '__main__':
-    app.run(port=5000)
-
+    app.run(host='0.0.0.0', port=5000)

@@ -31,5 +31,4 @@ def initialize_firebase_app():
         print(f"❌ Eroare la inițializarea Firebase: {e}")
         return None
 
-# Variabila globală care va deține clientul Firestore
 db = initialize_firebase_app()
