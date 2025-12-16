@@ -1,31 +1,14 @@
-from langchain.tools import tool, ToolRuntime
-from dataclasses import dataclass
-#from firebase_init import db
-
-db = {
-    "user_1": {
-        "hotel_name": "Hotel Aurora",
-        "phone": "+39 123 456 789",
-        "email": "info@aurora.it",
-        "address": "Via Roma 10"
-    },
-    "user_2": {
-        "hotel_name": "Hotel Bella",
-        "phone": "+39 987 654 321",
-        "email": "contact@bella.it",
-        "address": "Via Milano 20"
+db = {"Hotel_1": {
+        "hotel_name": "The Hotel Chelsea",
+        "adress": "222 West Twenty-Third Street, New York",
+        "phone": "+40764067966",
+        "email": "reservations@hetelcelsea.com"
     }
 }
 
-@dataclass
-class UserContext:
-    user_id: str
-
-@tool
-def get_hotel_info(runtime: ToolRuntime[UserContext]) -> dict:
+def get_hotel_info(user_id: str) -> dict:
     """"Get the current hotel's information from database"""
-    user_id = runtime.context.user_id
-    user_ref = db.reference(f"users/{user_id}").get()
+    user_ref = db.get(user_id, {}).copy()
 
     return {
         "hotel_name": user_ref.get("hotel"),
@@ -34,32 +17,32 @@ def get_hotel_info(runtime: ToolRuntime[UserContext]) -> dict:
         "address": user_ref.get("address")
     }
     
-@tool
-def verify_with_hotel(db_data: dict, hotel_data : dict) -> dict:
-    """
-    Compare the data provided by the hotel with the information from the database.
-    Return only the fields that need to be updated.
-    """
+
+def verify_with_hotel(db_data: dict, hotel_data: dict) -> dict:
     updates = {}
-
-    for key, db_val in db.data.items():
-        hotel_val = hotel_data.get(key)
-
-        if  str(db_val).strip().lower() != str(hotel_val).strip().lower():
-            updates[key] = hotel_val
-
+    
+    # Simple direct matching now that keys are standardized
+    for key, val in hotel_data.items():
+        if key in db_data:
+            current_val = db_data[key]
+            # Compare ignoring case/whitespace
+            if str(current_val).strip().lower() != str(val).strip().lower():
+                updates[key] = val
+    
     return {
-        "needs_update" : bool(updates),
-        "updates" : updates
-            }
+        "needs_update": bool(updates),
+        "updates": updates
+    }
 
 
-@tool
-def update_data(runtime: "ToolRuntime[UserContext]", updated_info: dict):
+
+def update_data(user_id: str, updated_info: dict):
     """
     Update the database if needed.
     Return a succes/error mesage.
     """
-    user_id = runtime.context.user_id
-    user_ref = db.reference(f"users/{user_id}")
-    user_ref.update(updated_info)
+    # user_ref = db.reference(f"users/{user_id}")
+    # user_ref.update(updated_info)
+
+    if user_id in db:
+        db[user_id].update(updated_info)
