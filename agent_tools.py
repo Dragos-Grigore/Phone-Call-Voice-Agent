@@ -9,7 +9,7 @@ def get_hotel_info(user_id: str) -> dict:
     """Get the current hotel's information from Firestore"""
     
     # Linter is now happy because of the assert above
-    doc_ref = db.collection("users").document(user_id)
+    doc_ref = db.collection("hotels").document(user_id)
     doc = doc_ref.get()
 
     if not doc.exists:
@@ -58,11 +58,18 @@ def update_data(hotel_id: str, updated_info: dict):
     """
     try:
         # Use Firestore update syntax
-        doc_ref = db.collection("users").document(hotel_id)
+        doc_ref = db.collection("hotels").document(hotel_id)
         doc_ref.update(updated_info)
         return True
     except Exception as e:
         print(f"❌ Firestore Update Error: {e}")
         return False
 
-read_first_n_hotels()
+if __name__ == "__main__":
+
+    details = {'hotel_name': 'Hyatt Regency Tulsa',
+                    'adress': 'test',
+                    'phone': 'test',
+                    'email_address': 'test',
+                }
+    read_first_n_hotels()

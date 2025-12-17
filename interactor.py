@@ -62,7 +62,7 @@ class VoiceAgent:
         self.is_speaking = False
         self.SPEECH_THRESHOLD = 0.5
         self.MAX_SILENCE_CHUNKS = 20 
-
+        self.final_transcript=""
         self.call_ended = False
 
     def _resample_audio(self, audio_data, orig_sr, target_sr) -> np.ndarray:
@@ -91,7 +91,7 @@ class VoiceAgent:
         db_context = "\n".join(info_sentences)
 
         messages = [
-            {"role": "system", "content": f"""You are Sofia, a professional voice agent.
+            {"role": "system", "content": f"""You are Sofia, a professional voice agent. You need to ask the hotel manager if the phone number, address and email address are correct
             CURRENT DATA:
             {db_context}
             {system_note}
@@ -101,7 +101,7 @@ class VoiceAgent:
             2. Be concise (under 2 sentences).
             3. NEVER ask user to type.
             """},
-            {"role": "user", "content": "Hello. Hotel name, how can i help you?"},
+            {"role": "user", "content": "Hello. <Hotel name>, how can i help you?"},
             {"role": "assistant", "content": "Hello! I'm Sofia, calling to verify your details."},
             {"role": "user", "content": user_text},
         ]
@@ -151,7 +151,6 @@ class VoiceAgent:
 
         # 1. ADD INCOMING DATA TO VAD BUFFER
         self.vad_buffer.extend(chunk_pcm)
-        
         response_audio = None
 
         # 2. PROCESS ONLY COMPLETE CHUNKS (256 samples / 512 bytes)
@@ -199,11 +198,12 @@ class VoiceAgent:
                     result = self.stt_model.transcribe(audio_16k, fp16=False)
                     raw_text = result['text']
                     transcript = str(raw_text[0] if isinstance(raw_text, list) else raw_text).strip()
-                    
+                    self.final_transcript += transcript + " "
                     print(f"User said: {transcript}")
                     
                     if transcript and len(transcript) >= 2:
                         llm_reply = self.process_llm(transcript)
+                        self.final_transcript += llm_reply + " "
                         print(f"Agent replying: {llm_reply}")
                         response_audio = self.text_to_speech_pcm(llm_reply)
                         
@@ -213,4 +213,4 @@ class VoiceAgent:
                 except Exception as e:
                     print(f"Processing Error: {e}")
 
-        return response_audio
+        return response_audio, self.final_transcript
